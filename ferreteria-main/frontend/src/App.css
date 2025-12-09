@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #f7f8fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  color: #2d3748;
+}
+
+.App {
+  min-height: 100vh;
+  background: #f7f8fa;
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Global color variables */
+:root {
+  --dark-bg: #1a1d29;
+  --dark-bg-alt: #2d3748;
+  --header-bg: #4a5568;
+  --content-bg: #f7f8fa;
+  --white: #ffffff;
+  --primary-blue: #3182ce;
+  --primary-blue-hover: #2c5aa0;
+  --text-dark: #2d3748;
+  --text-light: #718096;
+  --border-light: #e2e8f0;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+

@@ -1,0 +1,14 @@
+{
+  "name": "ferreteria-corralon",
+  "version": "1.0.0",
+  "scripts": {
+    "backend": "cd ferreteria-main/backend && npm run dev",
+    "frontend": "cd ferreteria-main/frontend && npm start",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "start": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.11"
+  }
+}

@@ -1,0 +1,28 @@
+.submenu-container {
+  text-align: center;
+  padding: 50px;
+  height: 100vh;
+  background: linear-gradient(to bottom, #dff6ff, #a2d2ff);
+}
+
+.submenu-container h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+}
+
+.submenu-container button {
+  display: block;
+  margin: 15px auto;
+  padding: 15px 30px;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: #3498db;
+  color: white;
+  transition: 0.3s;
+}
+
+.submenu-container button:hover {
+  transform: scale(1.05);
+}

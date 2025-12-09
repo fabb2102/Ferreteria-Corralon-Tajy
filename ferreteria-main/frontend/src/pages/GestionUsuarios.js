@@ -1,0 +1,909 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
+
+const GestionUsuarios = () => {
+  const { user, isAdmin } = useAuth();
+  const [usuarios, setUsuarios] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [credentials, setCredentials] = useState(null);
+
+  // Form states
+  const [newUser, setNewUser] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    rolId: 2 // Default to vendedor
+  });
+
+  const [editUser, setEditUser] = useState({
+    nombre: '',
+    email: '',
+    rolId: '',
+    activo: true
+  });
+
+  // Check admin access
+  useEffect(() => {
+    if (!isAdmin()) {
+      setError('No tienes permisos para acceder a esta sección');
+      setLoading(false);
+      return;
+    }
+    
+    fetchData();
+  }, [isAdmin]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [usuariosResponse, rolesResponse] = await Promise.all([
+        apiService.get('/usuarios'),
+        apiService.get('/roles')
+      ]);
+      
+      setUsuarios(usuariosResponse);
+      setRoles(rolesResponse);
+    } catch (error) {
+      setError('Error al cargar los datos: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNewUser = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const response = await apiService.post('/usuarios', newUser);
+      
+      // Show credentials modal
+      setCredentials(response.credencialesTemporales);
+      setShowCredentialsModal(true);
+      setShowNewUserForm(false);
+      
+      // Reset form
+      setNewUser({
+        nombre: '',
+        email: '',
+        password: '',
+        rolId: 2
+      });
+      
+      // Refresh users list
+      await fetchData();
+    } catch (error) {
+      setError('Error al crear usuario: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditUser = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await apiService.put(`/usuarios/${selectedUser.id}`, editUser);
+      
+      setShowEditModal(false);
+      setSelectedUser(null);
+      await fetchData();
+    } catch (error) {
+      setError('Error al actualizar usuario: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (usuario) => {
+    try {
+      setLoading(true);
+      await apiService.patch(`/usuarios/${usuario.id}/toggle-status`);
+      await fetchData();
+    } catch (error) {
+      setError('Error al cambiar estado: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (usuario) => {
+    if (!window.confirm(`¿Resetear la contraseña de ${usuario.nombre}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiService.post(`/usuarios/${usuario.id}/reset-password`);
+
+      // Show new credentials
+      setCredentials(response.nuevasCredenciales);
+      setShowCredentialsModal(true);
+    } catch (error) {
+      setError('Error al resetear contraseña: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (usuario) => {
+    if (usuario.activo) {
+      alert('No puedes eliminar un usuario activo. Primero desactívalo.');
+      return;
+    }
+
+    if (usuario.id === user.id) {
+      alert('No puedes eliminar tu propia cuenta.');
+      return;
+    }
+
+    if (!window.confirm(`¿ELIMINAR permanentemente al usuario "${usuario.nombre}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await apiService.delete(`/usuarios/${usuario.id}`);
+      alert('Usuario eliminado exitosamente');
+      await fetchData();
+    } catch (error) {
+      setError('Error al eliminar usuario: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditModal = (usuario) => {
+    setSelectedUser(usuario);
+    setEditUser({
+      nombre: usuario.nombre,
+      email: usuario.email,
+      rolId: usuario.rolId,
+      activo: usuario.activo
+    });
+    setShowEditModal(true);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Nunca';
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (!isAdmin()) {
+    return (
+      <div className="unauthorized">
+        <div className="error-message">
+          <h3>Acceso Denegado</h3>
+          <p>No tienes permisos para acceder a esta sección.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && usuarios.length === 0) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        <p>Cargando usuarios...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="gestion-usuarios">
+      <div className="page-header">
+        <h1>Gestión de Usuarios</h1>
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowNewUserForm(true)}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          Nuevo Usuario
+        </button>
+      </div>
+
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={() => setError('')}>×</button>
+        </div>
+      )}
+
+      {/* Users Table */}
+      <div className="users-table-container">
+        <table className="users-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Último Acceso</th>
+              <th style={{ textAlign: 'center', width: '200px' }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usuarios.map((usuario) => (
+              <tr key={usuario.id}>
+                <td>{usuario.id}</td>
+                <td>{usuario.nombre}</td>
+                <td>{usuario.email}</td>
+                <td>
+                  <span className={`role-badge role-${usuario.rol.nombre.toLowerCase()}`}>
+                    {usuario.rol.nombre}
+                  </span>
+                </td>
+                <td>
+                  <span className={`status-badge ${usuario.activo ? 'active' : 'inactive'}`}>
+                    {usuario.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                <td>{formatDate(usuario.ultimoAcceso)}</td>
+                <td>
+                  <div className="action-buttons">
+                    <button
+                      className="btn btn-sm btn-info"
+                      onClick={() => openEditModal(usuario)}
+                      title="Editar usuario"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+
+                    <button
+                      className={`btn btn-sm ${usuario.activo ? 'btn-warning' : 'btn-success'}`}
+                      onClick={() => handleToggleStatus(usuario)}
+                      disabled={user.id === usuario.id}
+                      title={usuario.activo ? 'Desactivar usuario' : 'Activar usuario'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        {usuario.activo ? (
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        ) : (
+                          <path d="M5 12l5 5L20 7"/>
+                        )}
+                      </svg>
+                    </button>
+
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => handleResetPassword(usuario)}
+                      title="Resetear contraseña"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    </button>
+
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDeleteUser(usuario)}
+                      disabled={usuario.activo || user.id === usuario.id}
+                      title={usuario.activo ? 'Desactiva primero para eliminar' : 'Eliminar usuario'}
+                      style={{
+                        background: usuario.activo || user.id === usuario.id ? '#ccc' : '#dc3545',
+                        cursor: usuario.activo || user.id === usuario.id ? 'not-allowed' : 'pointer',
+                        opacity: usuario.activo || user.id === usuario.id ? 0.5 : 1
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* New User Form Modal */}
+      {showNewUserForm && (
+        <div className="modal-overlay" onClick={() => setShowNewUserForm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Crear Nuevo Usuario</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowNewUserForm(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleNewUser} className="modal-body">
+              <div className="form-group">
+                <label htmlFor="nombre">Nombre:</label>
+                <input
+                  type="text"
+                  id="nombre"
+                  value={newUser.nombre}
+                  onChange={(e) => setNewUser({...newUser, nombre: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="email">Email:</label>
+                <input
+                  type="email"
+                  id="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="password">Contraseña Temporal:</label>
+                <input
+                  type="password"
+                  id="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                  required
+                  placeholder="Ej: TEMP123456"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="rolId">Rol:</label>
+                <select
+                  id="rolId"
+                  value={newUser.rolId}
+                  onChange={(e) => setNewUser({...newUser, rolId: parseInt(e.target.value)})}
+                  required
+                >
+                  {roles.map(rol => (
+                    <option key={rol.id} value={rol.id}>
+                      {rol.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowNewUserForm(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Creando...' : 'Crear Usuario'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Editar Usuario</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowEditModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditUser} className="modal-body">
+              <div className="form-group">
+                <label htmlFor="edit-nombre">Nombre:</label>
+                <input
+                  type="text"
+                  id="edit-nombre"
+                  value={editUser.nombre}
+                  onChange={(e) => setEditUser({...editUser, nombre: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="edit-email">Email:</label>
+                <input
+                  type="email"
+                  id="edit-email"
+                  value={editUser.email}
+                  onChange={(e) => setEditUser({...editUser, email: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="edit-rolId">Rol:</label>
+                <select
+                  id="edit-rolId"
+                  value={editUser.rolId}
+                  onChange={(e) => setEditUser({...editUser, rolId: parseInt(e.target.value)})}
+                  required
+                >
+                  {roles.map(rol => (
+                    <option key={rol.id} value={rol.id}>
+                      {rol.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={editUser.activo}
+                    onChange={(e) => setEditUser({...editUser, activo: e.target.checked})}
+                    disabled={user.id === selectedUser.id}
+                  />
+                  Usuario activo
+                  {user.id === selectedUser.id && (
+                    <small>(No puedes desactivar tu propia cuenta)</small>
+                  )}
+                </label>
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Credentials Modal */}
+      {showCredentialsModal && credentials && (
+        <div className="modal-overlay" onClick={() => setShowCredentialsModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Credenciales de Usuario</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowCredentialsModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="credentials-info">
+                <div className="alert alert-warning">
+                  <p><strong>¡IMPORTANTE!</strong> Guarda estas credenciales para entregar al usuario:</p>
+                </div>
+                
+                <div className="credential-item">
+                  <label>Email:</label>
+                  <code>{credentials.email}</code>
+                </div>
+                
+                <div className="credential-item">
+                  <label>Contraseña:</label>
+                  <code>{credentials.password}</code>
+                </div>
+                
+                <div className="alert alert-info">
+                  <p>{credentials.mensaje}</p>
+                </div>
+              </div>
+              
+              <div className="modal-actions">
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => setShowCredentialsModal(false)}
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .gestion-usuarios {
+          padding: 20px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #e1e5e9;
+        }
+
+        .page-header h1 {
+          margin: 0;
+          color: #2c3e50;
+          font-size: 28px;
+          font-weight: 600;
+        }
+
+        .btn {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s ease;
+          text-decoration: none;
+        }
+
+        .btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+
+        .btn-secondary {
+          background: #6c757d;
+          color: white;
+        }
+
+        .btn-warning {
+          background: #ffc107;
+          color: #212529;
+        }
+
+        .btn-success {
+          background: #28a745;
+          color: white;
+        }
+
+        .btn-info {
+          background: #17a2b8;
+          color: white;
+        }
+
+        .btn-danger {
+          background: #dc3545;
+          color: white;
+        }
+
+        .btn-sm {
+          padding: 4px 8px;
+          font-size: 12px;
+        }
+
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .users-table-container {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+
+        .users-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .users-table th {
+          background: linear-gradient(135deg, #2196f3 0%, #1565c0 100%);
+          color: white;
+          padding: 18px 15px;
+          text-align: left;
+          font-weight: 700;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .users-table td {
+          padding: 12px;
+          border-bottom: 1px solid #f1f3f4;
+          font-size: 14px;
+        }
+
+        .users-table tbody tr {
+          transition: background-color 0.15s ease;
+        }
+
+        .users-table tbody tr:hover {
+          background-color: #f9f9f9;
+        }
+
+        .role-badge {
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .role-administrador {
+          background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+          color: white;
+        }
+
+        .role-vendedor {
+          background: linear-gradient(135deg, #4ecdc4, #44a08d);
+          color: white;
+        }
+
+        .status-badge {
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .status-badge.active {
+          background: linear-gradient(135deg, #56cc9d, #6be6b8);
+          color: white;
+        }
+
+        .status-badge.inactive {
+          background: linear-gradient(135deg, #ff7675, #fd79a8);
+          color: white;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 6px;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .modal {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          width: 90%;
+          max-width: 500px;
+          max-height: 80vh;
+          overflow-y: auto;
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          border-bottom: 1px solid #e1e5e9;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+          color: #2c3e50;
+        }
+
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          color: #6c757d;
+          padding: 0;
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .modal-body {
+          padding: 20px;
+        }
+
+        .form-group {
+          margin-bottom: 20px;
+        }
+
+        .form-group label {
+          display: block;
+          margin-bottom: 6px;
+          font-weight: 500;
+          color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select {
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid #ced4da;
+          border-radius: 6px;
+          font-size: 14px;
+          transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+          width: auto;
+        }
+
+        .checkbox-label small {
+          color: #6c757d;
+          font-size: 12px;
+        }
+
+        .modal-actions {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid #e1e5e9;
+        }
+
+        .credentials-info {
+          text-align: center;
+        }
+
+        .credential-item {
+          margin: 15px 0;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #667eea;
+        }
+
+        .credential-item label {
+          display: block;
+          font-weight: 600;
+          margin-bottom: 8px;
+          color: #2c3e50;
+        }
+
+        .credential-item code {
+          display: inline-block;
+          padding: 8px 12px;
+          background: #fff;
+          border: 1px solid #ced4da;
+          border-radius: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 16px;
+          font-weight: 600;
+          color: #495057;
+          letter-spacing: 1px;
+        }
+
+        .alert {
+          padding: 12px 16px;
+          border-radius: 6px;
+          margin: 15px 0;
+        }
+
+        .alert-warning {
+          background: #fff3cd;
+          border: 1px solid #ffeaa7;
+          color: #856404;
+        }
+
+        .alert-info {
+          background: #d1ecf1;
+          border: 1px solid #b8daff;
+          color: #0c5460;
+        }
+
+        .error-message {
+          background: #f8d7da;
+          color: #721c24;
+          padding: 12px 16px;
+          border-radius: 6px;
+          margin-bottom: 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .error-message button {
+          background: none;
+          border: none;
+          color: #721c24;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 0;
+          width: 20px;
+          height: 20px;
+        }
+
+        .loading {
+          text-align: center;
+          padding: 40px;
+        }
+
+        .spinner {
+          border: 3px solid #f3f3f3;
+          border-top: 3px solid #667eea;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .unauthorized {
+          text-align: center;
+          padding: 40px;
+        }
+
+        .unauthorized .error-message {
+          max-width: 400px;
+          margin: 0 auto;
+          text-align: center;
+        }
+
+        .unauthorized h3 {
+          margin-bottom: 10px;
+          color: #721c24;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default GestionUsuarios;

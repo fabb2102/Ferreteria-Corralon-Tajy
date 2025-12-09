@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Login - Ferretería</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            background: #f5f5f5;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.info {
+            background: #2196F3;
+        }
+        pre {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Login - Ferretería</h1>
+
+    <div class="section">
+        <h2>1. Ver datos actuales en localStorage</h2>
+        <button class="info" onclick="verLocalStorage()">Ver localStorage</button>
+        <pre id="localStorage-output">Haz clic en el botón para ver los datos</pre>
+    </div>
+
+    <div class="section">
+        <h2>2. Limpiar localStorage</h2>
+        <button class="danger" onclick="limpiarLocalStorage()">Limpiar Todo</button>
+        <p id="clear-output"></p>
+    </div>
+
+    <div class="section">
+        <h2>3. Probar Login con Backend</h2>
+        <button onclick="probarLogin()">Probar Login Admin</button>
+        <pre id="login-output">Haz clic para probar el login</pre>
+    </div>
+
+    <div class="section">
+        <h2>4. Verificar Permisos del Usuario</h2>
+        <button class="info" onclick="verificarPermisos()">Verificar Permisos</button>
+        <pre id="permisos-output">Haz clic para verificar permisos</pre>
+    </div>
+
+    <script>
+        function verLocalStorage() {
+            const output = document.getElementById('localStorage-output');
+            const user = localStorage.getItem('user');
+            const token = localStorage.getItem('token');
+
+            let result = '=== DATOS EN LOCALSTORAGE ===\n\n';
+            result += 'Token: ' + (token ? 'Presente (' + token.substring(0, 20) + '...)' : 'No encontrado') + '\n\n';
+
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    result += 'Usuario:\n' + JSON.stringify(userData, null, 2);
+                } catch (e) {
+                    result += 'ERROR: No se pudo parsear el usuario\n' + user;
+                }
+            } else {
+                result += 'Usuario: No encontrado';
+            }
+
+            output.textContent = result;
+        }
+
+        function limpiarLocalStorage() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            document.getElementById('clear-output').innerHTML = '<span class="success">✓ localStorage limpiado. Recarga la página e inicia sesión nuevamente.</span>';
+        }
+
+        async function probarLogin() {
+            const output = document.getElementById('login-output');
+            output.textContent = 'Probando login...';
+
+            try {
+                const response = await fetch('http://localhost:4000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@ferreteria.com',
+                        password: 'admin123'
+                    })
+                });
+
+                const data = await response.json();
+
+                let result = '=== RESPUESTA DEL BACKEND ===\n\n';
+                result += 'Status: ' + response.status + '\n\n';
+                result += 'Datos recibidos:\n';
+                result += JSON.stringify(data, null, 2);
+
+                if (data.usuario && data.usuario.rol) {
+                    result += '\n\n=== ANÁLISIS DEL ROL ===\n';
+                    result += 'rol.id: ' + data.usuario.rol.id + '\n';
+                    result += 'rol.nombre: "' + data.usuario.rol.nombre + '"\n';
+                    result += 'rol.nombre (toLowerCase): "' + data.usuario.rol.nombre.toLowerCase() + '"\n';
+                }
+
+                output.textContent = result;
+            } catch (error) {
+                output.textContent = '❌ ERROR:\n' + error.message;
+            }
+        }
+
+        function verificarPermisos() {
+            const output = document.getElementById('permisos-output');
+            const user = localStorage.getItem('user');
+
+            if (!user) {
+                output.textContent = '❌ No hay usuario en localStorage. Debes iniciar sesión primero.';
+                return;
+            }
+
+            try {
+                const userData = JSON.parse(user);
+
+                let result = '=== VERIFICACIÓN DE PERMISOS ===\n\n';
+                result += 'Usuario: ' + userData.nombre + '\n';
+                result += 'Email: ' + userData.email + '\n\n';
+
+                if (userData.rol) {
+                    result += 'Rol:\n';
+                    result += '  - ID: ' + userData.rol.id + '\n';
+                    result += '  - Nombre: "' + userData.rol.nombre + '"\n';
+                    result += '  - toLowerCase: "' + userData.rol.nombre.toLowerCase() + '"\n\n';
+
+                    // Simular las verificaciones del AuthContext
+                    const rolLower = userData.rol.nombre.toLowerCase();
+                    result += 'Verificaciones:\n';
+                    result += '  - ¿Es Administrador? ' + (rolLower === 'administrador'.toLowerCase() ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Es Vendedor? ' + (rolLower === 'vendedor'.toLowerCase() ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Puede ver productos? ' + (['administrador', 'vendedor'].includes(rolLower) ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Puede ver clientes? ' + (['administrador', 'vendedor'].includes(rolLower) ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Puede ver ventas? ' + (['administrador', 'vendedor'].includes(rolLower) ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Puede ver compras? ' + (rolLower === 'administrador' ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Puede ver proveedores? ' + (rolLower === 'administrador' ? '✓ SÍ' : '✗ NO') + '\n';
+                    result += '  - ¿Puede ver usuarios? ' + (rolLower === 'administrador' ? '✓ SÍ' : '✗ NO') + '\n';
+                } else {
+                    result += '❌ ERROR: No hay información de rol en el usuario';
+                }
+
+                output.textContent = result;
+            } catch (error) {
+                output.textContent = '❌ ERROR al parsear usuario:\n' + error.message;
+            }
+        }
+
+        // Ejecutar automáticamente al cargar
+        window.onload = function() {
+            verLocalStorage();
+        };
+    </script>
+</body>
+</html>

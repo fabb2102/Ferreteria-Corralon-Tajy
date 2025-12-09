@@ -1,0 +1,93 @@
+app.post('/api/compras', authenticateToken, authorize(['Administrador']), async (req, res) => {
+  const { proveedorId, productos: productosCompra, total, observaciones } = req.body;
+
+  console.log('=== COMPRA REQUEST DEBUG ===');
+  console.log('Received proveedorId:', proveedorId);
+  console.log('Productos de compra:', productosCompra);
+
+  // Validaciones
+  if (!proveedorId) {
+    return res.status(400).json({ error: 'Proveedor es obligatorio' });
+  }
+
+  if (!productosCompra || productosCompra.length === 0) {
+    return res.status(400).json({ error: 'Debe agregar al menos un producto a la compra' });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Validar proveedor existe
+    const proveedorCheck = await client.query('SELECT id, nombre FROM proveedor WHERE id = $1', [proveedorId]);
+    if (proveedorCheck.rows.length === 0) {
+      throw new Error('Proveedor no encontrado');
+    }
+
+    // Validar productos
+    for (const item of productosCompra) {
+      if (!item.productoId) {
+        throw new Error('Todos los productos deben estar seleccionados');
+      }
+      if (!item.cantidad || item.cantidad <= 0) {
+        throw new Error('Las cantidades deben ser mayores a cero');
+      }
+      if (!item.costo || item.costo <= 0) {
+        throw new Error('Los costos deben ser mayores a cero');
+      }
+
+      const producto = await client.query('SELECT id, nombre FROM producto WHERE id = $1', [item.productoId]);
+      if (producto.rows.length === 0) {
+        throw new Error(`Producto con ID ${item.productoId} no encontrado`);
+      }
+    }
+
+    // Crear compra
+    const compraResult = await client.query(
+      'INSERT INTO compra (proveedor_id, usuario_id, total, observaciones, fecha) VALUES ($1, $2, $3, $4, NOW()) RETURNING id, fecha',
+      [proveedorId, req.user.id, total, observaciones || null]
+    );
+
+    const compraId = compraResult.rows[0].id;
+
+    // Crear items de compra y actualizar stock
+    for (const item of productosCompra) {
+      const subtotal = item.cantidad * item.costo;
+
+      // Insertar item
+      await client.query(
+        'INSERT INTO item_compra (compra_id, producto_id, cantidad, precio_costo, subtotal) VALUES ($1, $2, $3, $4, $5)',
+        [compraId, item.productoId, item.cantidad, item.costo, subtotal]
+      );
+
+      // Actualizar stock (incrementar)
+      await client.query(
+        'UPDATE producto SET stock_actual = stock_actual + $1 WHERE id = $2',
+        [item.cantidad, item.productoId]
+      );
+
+      console.log(`✅ Producto ID ${item.productoId}: Stock +${item.cantidad}, Costo: ${item.costo}`);
+    }
+
+    await client.query('COMMIT');
+
+    console.log('✅ Compra creada en BD:', compraResult.rows[0]);
+
+    res.json({
+      id: compraId,
+      proveedorId,
+      proveedor: proveedorCheck.rows[0].nombre,
+      productos: productosCompra,
+      total,
+      fecha: compraResult.rows[0].fecha
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al crear compra:', error);
+    res.status(400).json({ error: error.message || 'Error al crear compra' });
+  } finally {
+    client.release();
+  }
+});

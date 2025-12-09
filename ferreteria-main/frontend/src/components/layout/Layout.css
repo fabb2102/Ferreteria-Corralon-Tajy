@@ -1,0 +1,51 @@
+/* Layout Base Styles */
+.layout {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.layout__main {
+  display: flex;
+  flex-direction: column;
+  margin-left: 280px; /* Match sidebar width */
+  min-height: 100vh;
+  min-width: 0; /* Prevent flex item from overflowing */
+}
+
+.layout__content {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+.layout__container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .layout__main {
+    margin-left: 260px; /* Match responsive sidebar width */
+  }
+  
+  .layout__content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout__main {
+    margin-left: 0; /* Remove margin on mobile as sidebar becomes overlay */
+  }
+  
+  .layout__content {
+    padding: 0.75rem;
+  }
+  
+  .layout__container {
+    padding: 0;
+  }
+}

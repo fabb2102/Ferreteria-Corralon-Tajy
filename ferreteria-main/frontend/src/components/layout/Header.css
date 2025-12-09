@@ -1,0 +1,157 @@
+/* Header Base Styles */
+.header {
+  background: var(--dark-bg);
+  border-bottom: 1px solid var(--dark-bg-alt);
+  padding: 0;
+  box-shadow: var(--shadow);
+}
+
+.header__container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Breadcrumb Section */
+.header__breadcrumb {
+  flex: 1;
+  min-width: 0;
+}
+
+.header__title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0 0 0.25rem 0;
+  line-height: 1.2;
+}
+
+.header__subtitle {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Header Actions */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header__user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background-color: var(--dark-bg-alt);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.header__user:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.header__user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.header__user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.header__user-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.header__user-role {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .header__container {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .header__title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header__container {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .header__title {
+    font-size: 1.375rem;
+  }
+  
+  .header__subtitle {
+    font-size: 0.8125rem;
+  }
+  
+  .header__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .header__user-info {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header__container {
+    padding: 0.75rem;
+  }
+  
+  .header__title {
+    font-size: 1.25rem;
+  }
+  
+  .header__user {
+    padding: 0.375rem 0.75rem;
+  }
+  
+  .header__user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+}

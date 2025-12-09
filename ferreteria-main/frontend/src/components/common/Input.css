@@ -1,0 +1,216 @@
+/* Input Container */
+.input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-container--full-width {
+  width: 100%;
+}
+
+/* Input Label */
+.input-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+}
+
+.input-label__required {
+  color: #f44336;
+  margin-left: 0.25rem;
+}
+
+/* Input Wrapper */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Base Input Styles */
+.input {
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 1rem;
+  transition: all 0.2s ease-in-out;
+  width: 100%;
+  background-color: #fff;
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.input::placeholder {
+  color: #999;
+}
+
+/* Input Sizes */
+.input--small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.input--medium {
+  padding: 0.625rem 0.875rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.input--large {
+  padding: 0.875rem 1rem;
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+/* Input with icons */
+.input-wrapper:has(.input-icon--start) .input {
+  padding-left: 2.5rem;
+}
+
+.input-wrapper:has(.input-icon--end) .input {
+  padding-right: 2.5rem;
+}
+
+/* Input Variants */
+.input--outlined {
+  border: 2px solid #ddd;
+  background-color: #fff;
+}
+
+.input--outlined:hover:not(.input--disabled) {
+  border-color: #bbb;
+}
+
+.input--outlined:focus {
+  border-color: #2196f3;
+}
+
+.input--filled {
+  border: none;
+  border-bottom: 2px solid #ddd;
+  background-color: #f5f5f5;
+  border-radius: 4px 4px 0 0;
+}
+
+.input--filled:hover:not(.input--disabled) {
+  background-color: #eeeeee;
+  border-bottom-color: #bbb;
+}
+
+.input--filled:focus {
+  background-color: #fff;
+  border-bottom-color: #2196f3;
+}
+
+.input--underlined {
+  border: none;
+  border-bottom: 2px solid #ddd;
+  background-color: transparent;
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.input--underlined:hover:not(.input--disabled) {
+  border-bottom-color: #bbb;
+}
+
+.input--underlined:focus {
+  border-bottom-color: #2196f3;
+}
+
+/* Input States */
+.input--error {
+  border-color: #f44336 !important;
+}
+
+.input--error:focus {
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2);
+}
+
+.input--disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.input--full-width {
+  width: 100%;
+}
+
+/* Input Icons */
+.input-icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input-icon--start {
+  left: 0.75rem;
+}
+
+.input-icon--end {
+  right: 0.75rem;
+}
+
+.input--error + .input-icon {
+  color: #f44336;
+}
+
+/* Input Helper Text */
+.input-helper {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #666;
+  margin: 0;
+}
+
+.input-helper--error {
+  color: #f44336;
+}
+
+/* Specific Input Types */
+.input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.input[type="number"]::-webkit-outer-spin-button,
+.input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input[type="search"]::-webkit-search-decoration,
+.input[type="search"]::-webkit-search-cancel-button,
+.input[type="search"]::-webkit-search-results-button,
+.input[type="search"]::-webkit-search-results-decoration {
+  display: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .input--large {
+    padding: 0.75rem 0.875rem;
+    font-size: 1rem;
+  }
+  
+  .input--medium {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .input--small {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
