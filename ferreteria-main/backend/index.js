@@ -277,41 +277,44 @@ app.get('/api/usuarios', authenticateToken, authorize(['Administrador']), (req, 
   }
 });
 
-app.post('/api/usuarios', authenticateToken, authorize(['Administrador']), (req, res) => {
+app.post('/api/usuarios', authenticateToken, authorize(['Administrador']), async (req, res) => {
   try {
     const { nombre, email, password, rolId } = req.body;
-    
+
     // Validaciones
     if (!nombre || !email || !password || !rolId) {
       return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
-    
+
     // Verificar email único
     const emailExiste = usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (emailExiste) {
       return res.status(400).json({ error: 'El email ya está registrado' });
     }
-    
+
     // Verificar que el rol existe
     const rol = roles.find(r => r.id === parseInt(rolId));
     if (!rol) {
       return res.status(400).json({ error: 'Rol inválido' });
     }
-    
+
+    // Hashear contraseña con bcrypt
+    const hashedPassword = await hashPassword(password);
+
     // Crear nuevo usuario
     const nuevoUsuario = {
       id: nextUsuarioId++,
       nombre,
       email: email.toLowerCase(),
-      password: hashPasswordMD5(password),
+      password: hashedPassword,
       rolId: parseInt(rolId),
       activo: true,
       fechaCreacion: new Date().toISOString(),
       ultimoAcceso: null
     };
-    
+
     usuarios.push(nuevoUsuario);
-    
+
     // Respuesta sin contraseña hasheada
     const { password: _, ...usuarioRespuesta } = nuevoUsuario;
     res.json({
@@ -324,11 +327,12 @@ app.post('/api/usuarios', authenticateToken, authorize(['Administrador']), (req,
       },
       credencialesTemporales: {
         email: email,
-        password: password,
+        password: password, // Contraseña original para mostrar al admin
         mensaje: 'Guarda estas credenciales para entregar al usuario'
       }
     });
   } catch (error) {
+    console.error('Error al crear usuario:', error);
     res.status(500).json({ error: 'Error al crear usuario' });
   }
 });
@@ -389,23 +393,26 @@ app.put('/api/usuarios/:id', authenticateToken, authorize(['Administrador']), (r
   }
 });
 
-app.post('/api/usuarios/:id/reset-password', authenticateToken, authorize(['Administrador']), (req, res) => {
+app.post('/api/usuarios/:id/reset-password', authenticateToken, authorize(['Administrador']), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    
+
     const usuarioIndex = usuarios.findIndex(u => u.id === id);
     if (usuarioIndex === -1) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-    
+
     // Generar nueva contraseña temporal
     const nuevaPassword = generateRandomPassword();
-    
+
+    // Hashear con bcrypt
+    const hashedPassword = await hashPassword(nuevaPassword);
+
     // Actualizar contraseña
-    usuarios[usuarioIndex].password = hashPasswordMD5(nuevaPassword);
-    
+    usuarios[usuarioIndex].password = hashedPassword;
+
     const usuario = usuarios[usuarioIndex];
-    
+
     res.json({
       mensaje: 'Contraseña reseteada exitosamente',
       usuario: {
@@ -415,11 +422,12 @@ app.post('/api/usuarios/:id/reset-password', authenticateToken, authorize(['Admi
       },
       nuevasCredenciales: {
         email: usuario.email,
-        password: nuevaPassword,
+        password: nuevaPassword, // Contraseña original para mostrar al admin
         mensaje: 'Entrega estas credenciales al usuario para que pueda acceder'
       }
     });
   } catch (error) {
+    console.error('Error al resetear contraseña:', error);
     res.status(500).json({ error: 'Error al resetear contraseña' });
   }
 });
@@ -688,6 +696,44 @@ app.put('/api/productos/:id', authenticateToken, authorize(['Administrador']), a
   }
 });
 
+// Verificar si un producto puede ser eliminado
+app.get('/api/productos/:id/can-delete', authenticateToken, authorize(['Administrador']), async (req, res) => {
+  const id = parseInt(req.params.id);
+
+  try {
+    // Verificar si el producto existe
+    const producto = await pool.query('SELECT id, nombre FROM producto WHERE id = $1', [id]);
+    if (producto.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    // Verificar ventas asociadas
+    const ventas = await pool.query('SELECT COUNT(*) as count FROM item_venta WHERE id_producto = $1', [id]);
+    const ventasCount = parseInt(ventas.rows[0].count);
+
+    // Verificar compras asociadas
+    const compras = await pool.query('SELECT COUNT(*) as count FROM item_compra WHERE producto_id = $1', [id]);
+    const comprasCount = parseInt(compras.rows[0].count);
+
+    const canDelete = ventasCount === 0 && comprasCount === 0;
+
+    res.json({
+      canDelete,
+      producto: producto.rows[0],
+      details: {
+        ventas: ventasCount,
+        compras: comprasCount,
+        message: canDelete
+          ? 'El producto puede ser eliminado'
+          : `El producto tiene ${ventasCount} venta(s) y ${comprasCount} compra(s) asociadas. No puede ser eliminado.`
+      }
+    });
+  } catch (error) {
+    console.error('Error al verificar producto:', error);
+    res.status(500).json({ error: 'Error al verificar producto' });
+  }
+});
+
 app.delete('/api/productos/:id', authenticateToken, authorize(['Administrador']), async (req, res) => {
   const id = parseInt(req.params.id);
 
@@ -703,7 +749,7 @@ app.delete('/api/productos/:id', authenticateToken, authorize(['Administrador'])
   } catch (error) {
     console.error('Error al eliminar producto:', error);
     if (error.code === '23503') { // Foreign key violation
-      res.status(400).json({ error: 'No se puede eliminar el producto porque está siendo usado en ventas o compras' });
+      res.status(400).json({ error: 'No se puede eliminar el producto porque tiene ventas o compras registradas. Los productos con historial de transacciones no pueden eliminarse para mantener la integridad de los registros contables.' });
     } else {
       res.status(500).json({ error: 'Error al eliminar producto' });
     }

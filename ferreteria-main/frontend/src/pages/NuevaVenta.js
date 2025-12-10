@@ -190,6 +190,7 @@ function NuevaVenta() {
     // Filtrar solo productos activos para la venta
     const productosActivos = productosExistentes.filter(p => p.activo !== false);
     console.log(`✅ Productos activos disponibles para venta: ${productosActivos.length}`);
+    console.log(`❌ Productos desactivados excluidos: ${productosExistentes.length - productosActivos.length}`);
     console.log('IDs de productos activos:', productosActivos.map(p => p.id));
 
     setProductosDisponibles(productosActivos);
@@ -698,24 +699,56 @@ function NuevaVenta() {
           </h3>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '15px',
-            marginTop: '20px',
-            backgroundColor: loading ? '#ccc' : '#2196f3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {loading ? 'Generando...' : 'Registrar Venta y Generar PDF (F10)'}
-        </button>
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginTop: '20px',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            type="button"
+            onClick={() => {
+              setVenta({
+                clienteId: '',
+                clienteNombre: '',
+                clienteEmail: '',
+                clienteTelefono: '',
+                clienteDireccion: '',
+                fecha: new Date().toISOString().split('T')[0],
+                productos: [{ productoId: '', nombre: '', cantidad: 1, precio: 0, costo: 0 }]
+              });
+            }}
+            style={{
+              padding: '15px 30px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Limpiar Formulario
+          </button>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '15px 30px',
+              backgroundColor: loading ? '#ccc' : '#2196f3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {loading ? 'Generando...' : 'Registrar Venta y Generar PDF (F10)'}
+          </button>
+        </div>
       </form>
     </div>
   );

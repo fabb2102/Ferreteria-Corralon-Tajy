@@ -342,72 +342,78 @@ function GestionCompras() {
       console.log('=== CARGANDO PRODUCTOS (BACKEND + LOCALSTORAGE) ===');
       const token = localStorage.getItem('token');
       console.log('Token disponible para productos:', !!token);
-      
+
       let productosBackend = [];
       let productosLocal = [];
-      
+
       // Intentar cargar desde backend si hay token
       if (token) {
         try {
           console.log('Cargando productos desde backend...');
           const backendData = await apiService.get('/productos');
-          productosBackend = backendData.map(p => ({
-            id: p.id,
-            codigo: p.codigo,
-            nombre: p.nombre,
-            precio: p.precio,
-            // Si el backend no envía costo, inicializar en 0 para permitir edición manual
-            costo: p.costo || 0,
-            stock: p.stock,
-            categoria: p.categoria,
-            proveedor: p.proveedor
-          }));
-          console.log('✅ Productos del backend:', productosBackend.length);
+          productosBackend = backendData
+            .filter(p => p.activo !== false) // Filtrar solo productos activos
+            .map(p => ({
+              id: p.id,
+              codigo: p.codigo,
+              nombre: p.nombre,
+              precio: p.precio,
+              // Si el backend no envía costo, inicializar en 0 para permitir edición manual
+              costo: p.costo || 0,
+              stock: p.stock,
+              categoria: p.categoria,
+              proveedor: p.proveedor,
+              activo: p.activo
+            }));
+          console.log('✅ Productos activos del backend:', productosBackend.length);
         } catch (error) {
           console.log('❌ Error al cargar desde backend:', error.message);
         }
       }
-      
+
       // Cargar productos del usuario desde localStorage
       const todosLosProductos = JSON.parse(localStorage.getItem('todolosproductos') || '[]');
       if (todosLosProductos.length > 0) {
-        productosLocal = todosLosProductos.map(p => ({
-          id: p.id,
-          codigo: p.codigo,
-          nombre: p.nombre,
-          precio: p.precio,
-          costo: p.costo || 0,
-          stock: p.stock,
-          categoria: p.categoria,
-          proveedor: p.proveedor
-        }));
-        console.log('✅ Productos de localStorage:', productosLocal.length);
+        productosLocal = todosLosProductos
+          .filter(p => p.activo !== false) // Filtrar solo productos activos
+          .map(p => ({
+            id: p.id,
+            codigo: p.codigo,
+            nombre: p.nombre,
+            precio: p.precio,
+            costo: p.costo || 0,
+            stock: p.stock,
+            categoria: p.categoria,
+            proveedor: p.proveedor,
+            activo: p.activo
+          }));
+        console.log('✅ Productos activos de localStorage:', productosLocal.length);
       }
-      
+
       // SOLO usar productos del backend cuando hay token para compras
       let productosCombinados = [];
-      
+
       if (token && productosBackend.length > 0) {
         // SOLO usar productos del backend - no mezclar con localStorage para evitar conflictos de ID
         productosCombinados = [...productosBackend];
-        console.log('🎯 Usando SOLO productos del backend para compras:', productosCombinados);
+        console.log('🎯 Usando SOLO productos activos del backend para compras:', productosCombinados.length);
       } else {
         // Sin token, usar localStorage como fallback
         productosCombinados = [...productosLocal];
-        console.log('⚠️ Sin token - usando productos locales:', productosCombinados);
+        console.log('⚠️ Sin token - usando productos activos locales:', productosCombinados.length);
       }
-      
+
       // Si no hay productos de ninguna fuente, usar fallback
       if (productosCombinados.length === 0) {
-        console.log('No hay productos, usando fallback');
+        console.log('No hay productos activos, usando fallback');
         const fallbackProductos = [
-          { id: 1, codigo: 'PRD001', nombre: 'Martillo', precio: 25500, costo: 15000, stock: 15, categoria: 'Herramientas', proveedor: 'Proveedor A' },
-          { id: 2, codigo: 'PRD002', nombre: 'Destornillador', precio: 12000, costo: 7000, stock: 30, categoria: 'Herramientas', proveedor: 'Proveedor B' },
-          { id: 3, codigo: 'PRD003', nombre: 'Tornillos', precio: 5750, costo: 3000, stock: 100, categoria: 'Accesorios', proveedor: 'Proveedor C' }
+          { id: 1, codigo: 'PRD001', nombre: 'Martillo', precio: 25500, costo: 15000, stock: 15, categoria: 'Herramientas', proveedor: 'Proveedor A', activo: true },
+          { id: 2, codigo: 'PRD002', nombre: 'Destornillador', precio: 12000, costo: 7000, stock: 30, categoria: 'Herramientas', proveedor: 'Proveedor B', activo: true },
+          { id: 3, codigo: 'PRD003', nombre: 'Tornillos', precio: 5750, costo: 3000, stock: 100, categoria: 'Accesorios', proveedor: 'Proveedor C', activo: true }
         ];
         setProductosDisponibles(fallbackProductos);
       } else {
-        console.log(`🎯 Total productos disponibles: ${productosCombinados.length}`);
+        console.log(`🎯 Total productos activos disponibles: ${productosCombinados.length}`);
         setProductosDisponibles(productosCombinados);
       }
 
@@ -415,9 +421,9 @@ function GestionCompras() {
       console.error('Error general al cargar productos:', error);
       // Fallback final
       const fallbackProductos = [
-        { id: 1, codigo: 'PRD001', nombre: 'Martillo', precio: 25500, costo: 15000, stock: 15, categoria: 'Herramientas', proveedor: 'Proveedor A' },
-        { id: 2, codigo: 'PRD002', nombre: 'Destornillador', precio: 12000, costo: 7000, stock: 30, categoria: 'Herramientas', proveedor: 'Proveedor B' },
-        { id: 3, codigo: 'PRD003', nombre: 'Tornillos', precio: 5750, costo: 3000, stock: 100, categoria: 'Accesorios', proveedor: 'Proveedor C' }
+        { id: 1, codigo: 'PRD001', nombre: 'Martillo', precio: 25500, costo: 15000, stock: 15, categoria: 'Herramientas', proveedor: 'Proveedor A', activo: true },
+        { id: 2, codigo: 'PRD002', nombre: 'Destornillador', precio: 12000, costo: 7000, stock: 30, categoria: 'Herramientas', proveedor: 'Proveedor B', activo: true },
+        { id: 3, codigo: 'PRD003', nombre: 'Tornillos', precio: 5750, costo: 3000, stock: 100, categoria: 'Accesorios', proveedor: 'Proveedor C', activo: true }
       ];
       setProductosDisponibles(fallbackProductos);
     }

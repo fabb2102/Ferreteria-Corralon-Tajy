@@ -368,9 +368,7 @@ function ListarProductos() {
 
   return (
     <div className="content">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>{isAdmin() ? 'Gestión de Productos' : 'Lista de Productos'}</h1>
-      </div>
+      <h1>{isAdmin() ? 'Gestión de Productos' : 'Lista de Productos'}</h1>
 
       {/* Nota informativa para vendedores */}
       {!isAdmin() && (
@@ -455,15 +453,17 @@ function ListarProductos() {
               {currentProductos.every(p => selectedProductos.includes(p.id)) ? 'Deseleccionar Todo' : 'Seleccionar Todo'}
             </button>
 
-            {/* Botón Activar - solo si hay productos inactivos seleccionados */}
+            {/* Botones de acción según el estado de los productos seleccionados */}
             {selectedProductos.length > 0 && (() => {
               const productosSeleccionados = productos.filter(p => selectedProductos.includes(p.id));
               const tieneInactivos = productosSeleccionados.some(p => p.activo === false);
               const tieneActivos = productosSeleccionados.some(p => p.activo !== false);
               const todosInactivos = productosSeleccionados.every(p => p.activo === false);
+              const todosActivos = productosSeleccionados.every(p => p.activo !== false);
 
               return (
                 <>
+                  {/* Botón Activar - solo si hay productos inactivos */}
                   {tieneInactivos && (
                     <button
                       onClick={async () => {
@@ -494,14 +494,15 @@ function ListarProductos() {
                         fontWeight: '500'
                       }}
                     >
-                      Activar
+                      Activar {productosSeleccionados.filter(p => p.activo === false).length > 0 && `(${productosSeleccionados.filter(p => p.activo === false).length})`}
                     </button>
                   )}
 
+                  {/* Botón Desactivar - solo si hay productos activos */}
                   {tieneActivos && (
                     <button
                       onClick={async () => {
-                        if (window.confirm(`¿Desactivar ${productosSeleccionados.filter(p => p.activo !== false).length} producto(s)?`)) {
+                        if (window.confirm(`¿Desactivar ${productosSeleccionados.filter(p => p.activo !== false).length} producto(s)? Los productos desactivados no aparecerán en ventas ni compras.`)) {
                           try {
                             for (const producto of productosSeleccionados) {
                               if (producto.activo !== false) {
@@ -511,7 +512,7 @@ function ListarProductos() {
                             await fetchProductos();
                             setSelectedProductos([]);
                             setIsSelectMode(false);
-                            alert('Productos desactivados exitosamente');
+                            alert('Productos desactivados exitosamente. Ya no aparecerán en ventas ni compras.');
                           } catch (error) {
                             alert(`Error: ${error.message}`);
                           }
@@ -528,61 +529,9 @@ function ListarProductos() {
                         fontWeight: '500'
                       }}
                     >
-                      Desactivar
+                      Desactivar {productosSeleccionados.filter(p => p.activo !== false).length > 0 && `(${productosSeleccionados.filter(p => p.activo !== false).length})`}
                     </button>
                   )}
-
-                  <button
-                    onClick={async () => {
-                      const activosSeleccionados = productosSeleccionados.filter(p => p.activo !== false).length;
-                      const mensaje = activosSeleccionados > 0
-                        ? `Se eliminarán ${selectedProductos.length} producto(s). ${activosSeleccionados} están activos. ¿Continuar?`
-                        : `¿ELIMINAR permanentemente ${selectedProductos.length} producto(s) inactivo(s)? Esta acción no se puede deshacer.`;
-                      if (window.confirm(mensaje)) {
-                        try {
-                          let errores = 0;
-                          for (const productoId of selectedProductos) {
-                            try {
-                              await productService.deleteProduct(productoId);
-                            } catch (error) {
-                              console.error(`Error al eliminar producto ${productoId}:`, error);
-                              errores++;
-                            }
-                          }
-
-                          // También eliminar de localStorage
-                          let todosLosProductos = JSON.parse(localStorage.getItem('todolosproductos') || '[]');
-                          todosLosProductos = todosLosProductos.filter(p => !selectedProductos.includes(p.id));
-                          localStorage.setItem('todolosproductos', JSON.stringify(todosLosProductos));
-
-                          await fetchProductos();
-                          setSelectedProductos([]);
-                          setIsSelectMode(false);
-
-                          if (errores === 0) {
-                            alert(`${selectedProductos.length} producto(s) eliminado(s) exitosamente`);
-                          } else {
-                            alert(`Eliminación completada con ${errores} error(es)`);
-                          }
-                        } catch (error) {
-                          console.error('Error al eliminar productos:', error);
-                          alert(`Error: ${error.message || 'Error desconocido'}`);
-                        }
-                      }
-                    }}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#EF4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      fontWeight: '500'
-                    }}
-                  >
-                    Eliminar
-                  </button>
                 </>
               );
             })()}
